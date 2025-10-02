@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Grass
+  - Food
   layers:
   - Default
   - TransparentFX
