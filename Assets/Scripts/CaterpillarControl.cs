@@ -3,26 +3,33 @@ using UnityEngine.Audio;
 
 public class CaterpillarControl : MonoBehaviour
 {
+    // References
     private CharacterController characterController;
     private AudioSource audioSource;
+    // Movement
     private bool isMoving;
     private float timeElapsedSinceMoveBegan;
     private float extraTurnSpeedFactor;
-    private bool isCurrentlyGrowingSize;
+    // Gravity and Jumping
+    private float yVelocity;
+    // Eating (growing size)
+    private bool isCurrentlyGrowing;
+    private float timeSpentGrowing;
+    private float targetCameraSizeAfterGrowth;
+    private float sizeIncreaseAfterEating;
     private Vector3 targetSize;
-    private float timeSpentGrowingSize;
-    private float cameraTargetOrthographicSizeAfterGrowth;
 
-    [Header("Stats")]
+    [Header("Movement")]
     [SerializeField] private float speed;
     [SerializeField] private float extraTurnSpeed;
     [SerializeField] private AnimationCurve speedCurve;
     [SerializeField] private float timeSpentMoving;
     [SerializeField] private float delayAfterMoving;
-    //                          Higher value = less smooth.
     [SerializeField] private float rotationSmoothing;
     [SerializeField] private float moveTargetSmoothing;
-    [SerializeField] private float sizeIncreaseAfterEating;
+    [Header("Gravity and Jumping")]
+    [SerializeField] private float gravity;
+    [SerializeField] private float jumpSpeed;
     [Header("References")]
     [SerializeField] private Animator animator;
     [SerializeField] private Transform moveTarget;
@@ -34,6 +41,7 @@ public class CaterpillarControl : MonoBehaviour
     }
     private void Update() {
         ProcessMovement();
+        ProcessGravityAndJumping();
         ProcessGrowingSize();
     }
     private void ProcessMovement() {
@@ -78,23 +86,34 @@ public class CaterpillarControl : MonoBehaviour
             }
         }
     }
-    public void StartToGrowCaterpillarSize() {
+    private void ProcessGravityAndJumping() {
+        if (!characterController.isGrounded) {
+            yVelocity -= gravity * Time.deltaTime;
+        }
+        if (Input.GetKeyDown(KeyCode.Space)) {
+            yVelocity = jumpSpeed;
+        }
+        characterController.Move(Vector3.up * yVelocity);
+    }
+    public void StartToGrowCaterpillarSize(float sizeIncreaseAfterEating) {
+        this.sizeIncreaseAfterEating = sizeIncreaseAfterEating;
         targetSize = transform.localScale * sizeIncreaseAfterEating;
-        cameraTargetOrthographicSizeAfterGrowth = Camera.main.orthographicSize * sizeIncreaseAfterEating;
+        targetCameraSizeAfterGrowth = Camera.main.orthographicSize * sizeIncreaseAfterEating;
         audioSource.PlayOneShot(sizeGrowthSound);
-        isCurrentlyGrowingSize = true;
+        isCurrentlyGrowing = true;
     }
 
     private void ProcessGrowingSize() {
-        if (!isCurrentlyGrowingSize) return;
-        timeSpentGrowingSize += Time.deltaTime;
-        transform.localScale = Vector3.Lerp(transform.localScale, targetSize, timeSpentGrowingSize);
-        Camera.main.orthographicSize = Mathf.Lerp(Camera.main.orthographicSize, cameraTargetOrthographicSizeAfterGrowth, timeSpentGrowingSize);
-        if (timeSpentGrowingSize >= 1f) {
+        if (!isCurrentlyGrowing) return;
+        // Smoothing lerp between old caterpillar size and camera size.
+        timeSpentGrowing += Time.deltaTime;
+        transform.localScale = Vector3.Lerp(transform.localScale, targetSize, timeSpentGrowing);
+        Camera.main.orthographicSize = Mathf.Lerp(Camera.main.orthographicSize, targetCameraSizeAfterGrowth, timeSpentGrowing);
+        if (timeSpentGrowing >= 1f) {
             speed *= sizeIncreaseAfterEating;
             extraTurnSpeed *= sizeIncreaseAfterEating;
-            timeSpentGrowingSize = 0f;
-            isCurrentlyGrowingSize = false;
+            timeSpentGrowing = 0f;
+            isCurrentlyGrowing = false;
         }
     }
 }
