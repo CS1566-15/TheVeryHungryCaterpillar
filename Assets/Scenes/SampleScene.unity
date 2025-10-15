@@ -1551,7 +1551,8 @@ MonoBehaviour:
   rotationSmoothing: 1
   moveTargetSmoothing: 3
   gravity: -9.8
-  jumpSpeed: 20
+  verticalJumpSpeed: 10
+  horizontalJumpSpeed: 10
   animator: {fileID: 7628224649756125227}
   moveTarget: {fileID: 192641076}
   caterpillarFront: {fileID: 557718079600742578}

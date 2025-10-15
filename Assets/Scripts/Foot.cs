@@ -11,6 +11,7 @@ public class Foot : MonoBehaviour
     [SerializeField] private float maxDistance;
     [SerializeField] private float timeToLerp;
     [SerializeField] private AnimationCurve liftHeightOverTime;
+    [SerializeField] private bool debug;
     private void Awake() {
         lockedPosition = transform.position;
         initialLocalPosition = transform.localPosition;
@@ -21,6 +22,7 @@ public class Foot : MonoBehaviour
     private void Update() {
         transform.position = lockedPosition;
         float distance = Vector3.Distance(lockedPosition, transform.parent.TransformPoint(initialLocalPosition));
+        if (debug) Debug.Log(distance);
         if (distance >= maxDistance + randomDistance) {
             isLerping = true;
         }
