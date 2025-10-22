@@ -38,12 +38,15 @@ public class CaterpillarControl : MonoBehaviour
     [SerializeField] private Transform moveTarget;
     [SerializeField] private Transform caterpillarFront;
     [SerializeField] private AudioClip sizeGrowthSound;
+
+    private float highestExtraTurnSpeedFactor = 0;
     private void Awake() {
         canMove = true;
         characterController = GetComponent<CharacterController>();
         audioSource = GetComponent<AudioSource>();
     }
     private void Update() {
+        Debug.Log(caterpillarFront.localEulerAngles.x);
         ProcessMovement();
         ProcessGravityAndJumping();
         ProcessGrowingSize();
@@ -62,12 +65,19 @@ public class CaterpillarControl : MonoBehaviour
         if (isMoving) {
             // This 'if, else' block adds speed when the caterpillar is turning...for some reason, the movement doesn't look right otherwise.
             // Kind of a bandaid solution, but it works.
+
             if (caterpillarFront.localEulerAngles.x > 300) {
-                extraTurnSpeedFactor = extraTurnSpeed * (360 % caterpillarFront.localEulerAngles.x / 15f);
+                extraTurnSpeedFactor = Mathf.Abs(extraTurnSpeed * (360 % caterpillarFront.localEulerAngles.x / 15f));
             }
             else {
-                extraTurnSpeedFactor = extraTurnSpeed * (caterpillarFront.localEulerAngles.x / 15f);
+                extraTurnSpeedFactor = Mathf.Abs(extraTurnSpeed * (caterpillarFront.localEulerAngles.x / 15f));
             }
+
+            //extraTurnSpeedFactor = extraTurnSpeed * (caterpillarFront.localEulerAngles.x);
+            //if (extraTurnSpeedFactor > highestExtraTurnSpeedFactor) {
+            //    highestExtraTurnSpeedFactor -= extraTurnSpeedFactor;
+            //}
+
             // A singular Caterpillar movement is split into 2 parts:
             // 1. actually moving
             // 2. delay after moving, so the animation can catch up
