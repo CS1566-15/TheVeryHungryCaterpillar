@@ -3,10 +3,10 @@ using UnityEngine;
 
 public class Mouth : MonoBehaviour
 {
-    private Transform foodBeingEaten;
     private bool isEating;
     private float eatingProgress;
     private float eatingSpeed;
+    private Food foodBeingEaten;
     [SerializeField] private float timeToEat;
     [SerializeField] private CaterpillarControl caterpillarControl;
     [SerializeField] private Animator animator;
@@ -17,20 +17,23 @@ public class Mouth : MonoBehaviour
     }
     private void OnTriggerEnter(Collider other) {
         if (other.tag == "Food") {
-            foodBeingEaten = other.transform;
+            foodBeingEaten = other.GetComponent<Food>();
             audioSource.PlayOneShot(startEatingSound);
             isEating = true;
         }
     }
     private void Update() {
+        // Food takes 'timeToEat' seconds to enter the mouth.
         if (isEating) {
             eatingProgress += eatingSpeed * Time.deltaTime;
-            foodBeingEaten.position = Vector3.Lerp(foodBeingEaten.position, transform.position, eatingProgress);
-            foodBeingEaten.localScale = Vector3.Lerp(foodBeingEaten.localScale, Vector3.zero, eatingProgress);
+            foodBeingEaten.transform.position = Vector3.Lerp(foodBeingEaten.transform.position, transform.position, eatingProgress);
+            foodBeingEaten.transform.localScale = Vector3.Lerp(foodBeingEaten.transform.localScale, Vector3.zero, eatingProgress);
+            // Once food is done entering the mouth, destroy it and start growing caterpillar size.
             if (eatingProgress >= 1f) {
                 Destroy(foodBeingEaten.gameObject);
                 animator.Play("Eat");
-                caterpillarControl.StartToGrowCaterpillarSize();
+                float percentageFactor = 1f + foodBeingEaten.GetPercentSizeIncrease() / 100f;
+                caterpillarControl.StartToGrowCaterpillarSize(percentageFactor);
                 eatingProgress = 0f;
                 foodBeingEaten = null;
                 isEating = false;
