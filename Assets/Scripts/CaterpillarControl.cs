@@ -1,5 +1,6 @@
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 using UnityEngine.Audio;
 
 public class CaterpillarControl : MonoBehaviour
@@ -39,6 +40,10 @@ public class CaterpillarControl : MonoBehaviour
     [SerializeField] private float verticalJumpSpeed;
     [SerializeField] private float horizontalJumpSpeedMultiplier;
     [SerializeField] private JumpPathGenerator jumpPathGenerator;
+    [Header("Animation Rigging")]
+    [SerializeField] private MultiAimConstraint[] constraints;
+    [SerializeField] private float movingContraintWeight;
+    [SerializeField] private float jumpingConstraintWeight;
     [Header("References")]
     [SerializeField] private Animator animator;
     [SerializeField] private Transform moveTarget;
@@ -49,6 +54,9 @@ public class CaterpillarControl : MonoBehaviour
         canMove = true;
         characterController = GetComponent<CharacterController>();
         audioSource = GetComponent<AudioSource>();
+        for (int i = 0; i < constraints.Length; i++) {
+            constraints[i].weight = movingContraintWeight;
+        }
     }
 
     private void Update() {
@@ -65,7 +73,7 @@ public class CaterpillarControl : MonoBehaviour
         if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit)) {
             // Smooth out the moveTarget's position so the caterpillar looks less robotic when aiming toward the moveTarget.
             if (!isWaitingToJump) {
-                moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing);
+                moveTarget.position = Vector3.Lerp(moveTarget.position, new Vector3(hit.point.x, transform.position.y, hit.point.z), Time.deltaTime * moveTargetSmoothing);
             }
             else {
                 moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing * 10);
@@ -117,6 +125,7 @@ public class CaterpillarControl : MonoBehaviour
     private void ProcessGravityAndJumping() {
         // Get ready to jump when user presses RMB.
         if (Input.GetMouseButtonDown(1)) {
+            if (!characterController.isGrounded) return;
             jumpPathGenerator.ShowPath();
             animator.Play("Prejump");
             moveTarget.GetComponent<Animation>().Play("MoveTargetShow");
@@ -124,14 +133,21 @@ public class CaterpillarControl : MonoBehaviour
             canMove = false;
         }
         // Start the jump when user releases RMB.
+        // There's A LOT of stuff to do when the player jumps...don't worry about it.
         else if (Input.GetMouseButtonUp(1)) {
+            if (!isWaitingToJump) return;
             jumpPathGenerator.HidePath();
             isWaitingToJump = false;
+            animator.Play("Idle");
             moveTarget.GetComponent<Animation>().Play("MoveTargetHide");
-            yVelocity = verticalJumpSpeed;
+            float extraVelocity = moveTarget.position.y - transform.position.y;
+            yVelocity = verticalJumpSpeed + extraVelocity;
             moveTargetIsActive = false;
             jumpDistance = Vector3.Distance(transform.position, moveTarget.position);
             jumpDirection = caterpillarFront.up;
+            for (int i = 0; i < constraints.Length; i++) {
+                constraints[i].weight = jumpingConstraintWeight;
+            }
         }
         // Runs while RMB is held down. Rotate the caterpillar toward the moveTarget.
         if (isWaitingToJump) {
@@ -139,6 +155,7 @@ public class CaterpillarControl : MonoBehaviour
             Vector3 lookDirection = new Vector3(moveTarget.position.x - transform.position.x, 0, moveTarget.position.z - transform.position.z);
             transform.forward = -lookDirection;
         }
+        characterController.Move(Vector3.up * yVelocity * Time.deltaTime);
         // Add gravity and move the caterpillar through the air.
         if (!characterController.isGrounded) {
             if (hasLanded) {
@@ -146,18 +163,22 @@ public class CaterpillarControl : MonoBehaviour
             }
             yVelocity += gravity * Time.deltaTime;
             characterController.Move(jumpDirection * horizontalJumpSpeedMultiplier * jumpDistance * Time.deltaTime);
-            transform.GetChild(0).forward = characterController.velocity;
+            transform.GetChild(0).forward = new Vector3(-characterController.velocity.x, -yVelocity * 0.5f, -characterController.velocity.z);
         }
         // Check when we've landed...play sound and animation.
         else {
+            transform.GetChild(0).localRotation = Quaternion.Lerp(transform.GetChild(0).localRotation, Quaternion.identity, Time.deltaTime * 80f);
+            // Again, there's A LOT of stuff to do when we detect that the player has landed.
             if (!hasLanded) {
-
+                animator.Play("Land");
                 canMove = true;
                 moveTargetIsActive = true;
                 hasLanded = true;
+                for (int i = 0; i < constraints.Length; i++) {
+                    constraints[i].weight = movingContraintWeight;
+                }
             }
         }
-        characterController.Move(Vector3.up * yVelocity * Time.deltaTime);
     }
 
     public void StartToGrowCaterpillarSize(float sizeIncreaseAfterEating) {
