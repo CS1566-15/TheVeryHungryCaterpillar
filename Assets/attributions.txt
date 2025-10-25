@@ -3,3 +3,7 @@ Spring Birds Loop with Low-Cut (New Jersey) by hargissssound -- https://freesoun
 Chewing, Carrot, A.wav by InspectorJ -- https://freesound.org/s/412068/ -- License: Attribution 4.0
 
 Swallowing Water.wav by Razzvio -- https://freesound.org/s/79146/ -- License: Attribution 3.0
+
+PBR Ground Materials #1 [Dirt & Grass] by John's Junkyard Assets -- https://assetstore.unity.com/packages/2d/textures-materials/floors/pbr-ground-materials-1-dirt-grass-85402 -- License: Standard Unity Asset Store EULA
+
+AllSky Free - 10 Sky / Skybox Set by rpgwhitelock -- https://assetstore.unity.com/packages/2d/textures-materials/sky/allsky-free-10-sky-skybox-set-146014 -- License: Standard Unity Asset Store EULA
