@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -9,11 +10,15 @@ public class CaterpillarControl : MonoBehaviour
     // Movement
     private bool canMove;
     private bool isMoving;
+    private bool moveTargetIsActive;
     private float timeElapsedSinceMoveBegan;
     private float extraTurnSpeedFactor;
     // Gravity and Jumping
     private bool isWaitingToJump;
     private float yVelocity;
+    private bool hasLanded;
+    private float jumpDistance;
+    private Vector3 jumpDirection;
     // Eating (growing size)
     private bool isCurrentlyGrowing;
     private float timeSpentGrowing;
@@ -32,32 +37,44 @@ public class CaterpillarControl : MonoBehaviour
     [Header("Gravity and Jumping")]
     [SerializeField] private float gravity;
     [SerializeField] private float verticalJumpSpeed;
-    [SerializeField] private float horizontalJumpSpeed;
+    [SerializeField] private float horizontalJumpSpeedMultiplier;
+    [SerializeField] private JumpPathGenerator jumpPathGenerator;
     [Header("References")]
     [SerializeField] private Animator animator;
     [SerializeField] private Transform moveTarget;
     [SerializeField] private Transform caterpillarFront;
     [SerializeField] private AudioClip sizeGrowthSound;
 
-    private float highestExtraTurnSpeedFactor = 0;
     private void Awake() {
         canMove = true;
         characterController = GetComponent<CharacterController>();
         audioSource = GetComponent<AudioSource>();
     }
+
     private void Update() {
-        Debug.Log(caterpillarFront.localEulerAngles.x);
+        ProcessMoveTarget();
         ProcessMovement();
         ProcessGravityAndJumping();
         ProcessGrowingSize();
     }
-    private void ProcessMovement() {
-        if (!canMove) return;
+
+    private void ProcessMoveTarget() {
+        if (!moveTargetIsActive) return;
+        // The caterpillar always moves toward the moveTarget. This is used for moving and jumping.
         // Use the cursor position to fire a raycast, which hits the ground. This is the point the caterpillar moves toward.
         if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit)) {
             // Smooth out the moveTarget's position so the caterpillar looks less robotic when aiming toward the moveTarget.
-            moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing);
+            if (!isWaitingToJump) {
+                moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing);
+            }
+            else {
+                moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing * 10);
+            }
         }
+    }
+
+    private void ProcessMovement() {
+        if (!canMove) return;
         // Start moving by clicking mouse button
         if (Input.GetMouseButtonDown(0)) {
             isMoving = true;
@@ -72,11 +89,6 @@ public class CaterpillarControl : MonoBehaviour
             else {
                 extraTurnSpeedFactor = Mathf.Abs(extraTurnSpeed * (caterpillarFront.localEulerAngles.x / 15f));
             }
-
-            //extraTurnSpeedFactor = extraTurnSpeed * (caterpillarFront.localEulerAngles.x);
-            //if (extraTurnSpeedFactor > highestExtraTurnSpeedFactor) {
-            //    highestExtraTurnSpeedFactor -= extraTurnSpeedFactor;
-            //}
 
             // A singular Caterpillar movement is split into 2 parts:
             // 1. actually moving
@@ -101,28 +113,53 @@ public class CaterpillarControl : MonoBehaviour
             }
         }
     }
+
     private void ProcessGravityAndJumping() {
+        // Get ready to jump when user presses RMB.
         if (Input.GetMouseButtonDown(1)) {
+            jumpPathGenerator.ShowPath();
+            animator.Play("Prejump");
+            moveTarget.GetComponent<Animation>().Play("MoveTargetShow");
             isWaitingToJump = true;
+            canMove = false;
         }
+        // Start the jump when user releases RMB.
         else if (Input.GetMouseButtonUp(1)) {
+            jumpPathGenerator.HidePath();
             isWaitingToJump = false;
+            moveTarget.GetComponent<Animation>().Play("MoveTargetHide");
             yVelocity = verticalJumpSpeed;
+            moveTargetIsActive = false;
+            jumpDistance = Vector3.Distance(transform.position, moveTarget.position);
+            jumpDirection = caterpillarFront.up;
         }
         // Runs while RMB is held down. Rotate the caterpillar toward the moveTarget.
         if (isWaitingToJump) {
             // Makes a flat vector on the plane Y=0 from caterpillar to moveTarget.
-            Vector3 lookDirection = new Vector3(moveTarget.position.x - transform.position.x, 
-                                                0,
-                                                moveTarget.position.z - transform.position.z);
+            Vector3 lookDirection = new Vector3(moveTarget.position.x - transform.position.x, 0, moveTarget.position.z - transform.position.z);
             transform.forward = -lookDirection;
         }
+        // Add gravity and move the caterpillar through the air.
         if (!characterController.isGrounded) {
+            if (hasLanded) {
+                hasLanded = false;
+            }
             yVelocity += gravity * Time.deltaTime;
-            characterController.Move(caterpillarFront.up * horizontalJumpSpeed * Time.deltaTime);
+            characterController.Move(jumpDirection * horizontalJumpSpeedMultiplier * jumpDistance * Time.deltaTime);
+            transform.GetChild(0).forward = characterController.velocity;
+        }
+        // Check when we've landed...play sound and animation.
+        else {
+            if (!hasLanded) {
+
+                canMove = true;
+                moveTargetIsActive = true;
+                hasLanded = true;
+            }
         }
         characterController.Move(Vector3.up * yVelocity * Time.deltaTime);
     }
+
     public void StartToGrowCaterpillarSize(float sizeIncreaseAfterEating) {
         this.sizeIncreaseAfterEating = sizeIncreaseAfterEating;
         targetSize = transform.localScale * sizeIncreaseAfterEating;
