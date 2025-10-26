@@ -163,7 +163,7 @@ public class CaterpillarControl : MonoBehaviour
             }
             yVelocity += gravity * Time.deltaTime;
             characterController.Move(jumpDirection * horizontalJumpSpeedMultiplier * jumpDistance * Time.deltaTime);
-            transform.GetChild(0).forward = new Vector3(-characterController.velocity.x, -yVelocity * 0.5f, -characterController.velocity.z);
+            transform.GetChild(0).forward = Vector3.Lerp(transform.GetChild(0).forward, new Vector3(-characterController.velocity.x, -yVelocity * 0.5f, -characterController.velocity.z), Time.deltaTime * 30f);
         }
         // Check when we've landed...play sound and animation.
         else {
