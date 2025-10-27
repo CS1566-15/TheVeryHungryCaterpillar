@@ -77,6 +77,11 @@ public class CaterpillarControl : MonoBehaviour
             }
             else {
                 moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing * 10);
+                Vector3 vec = moveTarget.position - transform.position;
+                if (vec.magnitude >= 10f) {
+                    vec = vec.normalized * 10f;
+                    moveTarget.position = transform.position + vec;
+                }
             }
         }
     }
@@ -85,6 +90,7 @@ public class CaterpillarControl : MonoBehaviour
         if (!canMove) return;
         // Start moving by clicking mouse button
         if (Input.GetMouseButtonDown(0)) {
+            animator.Play("Crawl");
             isMoving = true;
         }
         if (isMoving) {
@@ -92,16 +98,16 @@ public class CaterpillarControl : MonoBehaviour
             // Kind of a bandaid solution, but it works.
 
             if (caterpillarFront.localEulerAngles.x > 300) {
-                extraTurnSpeedFactor = Mathf.Abs(extraTurnSpeed * (360 % caterpillarFront.localEulerAngles.x / 15f));
+                extraTurnSpeedFactor = extraTurnSpeed * Mathf.Abs((360 % caterpillarFront.localEulerAngles.x / 15f));
             }
             else {
-                extraTurnSpeedFactor = Mathf.Abs(extraTurnSpeed * (caterpillarFront.localEulerAngles.x / 15f));
+                extraTurnSpeedFactor = extraTurnSpeed * Mathf.Abs((caterpillarFront.localEulerAngles.x / 15f));
             }
 
             // A singular Caterpillar movement is split into 2 parts:
             // 1. actually moving
             // 2. delay after moving, so the animation can catch up
-            animator.Play("Crawl");
+
             // This keeps track of time, so we know when to stop moving.
             timeElapsedSinceMoveBegan += Time.deltaTime;
             // This block only executes while the caterpillar is allowed to move.
