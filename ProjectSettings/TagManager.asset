@@ -10,13 +10,13 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Worm
   - Water
   - UI
   - Outline
   - Caterpillar
-  - 
-  - 
+  - MoveTargetCollisionPlane
+  - Food
   - 
   - 
   - 
