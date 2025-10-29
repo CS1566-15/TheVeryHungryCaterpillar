@@ -12,12 +12,16 @@ public class Foot : MonoBehaviour
     [SerializeField] private float timeToLerp;
     [SerializeField] private AnimationCurve liftHeightOverTime;
     [SerializeField] private bool debug;
+    [SerializeField] private Transform head;
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip[] footstepSounds;
+    [SerializeField] private CharacterController characterController;
     private void Awake() {
         lockedPosition = transform.position;
         initialLocalPosition = transform.localPosition;
         lerpSpeed = 1f / timeToLerp;
         lerpAmount = 0f;
-        randomDistance = Random.Range(0f, 0.1f);
+        randomDistance = Random.Range(0f, 0.3f);
     }
     private void Update() {
         transform.position = lockedPosition;
@@ -27,13 +31,17 @@ public class Foot : MonoBehaviour
             isLerping = true;
         }
         if (isLerping) {
+            transform.up = head.up;
             lerpAmount += lerpSpeed * Time.deltaTime;
             transform.localPosition = Vector3.Lerp(transform.localPosition, initialLocalPosition, lerpAmount);
-            //transform.position += Vector3.up * liftHeightOverTime.Evaluate(lerpAmount);
+            transform.position += Vector3.up * liftHeightOverTime.Evaluate(lerpAmount);
             if (lerpAmount >= 1) {
                 lockedPosition = transform.position;
                 lerpAmount = 0f;
                 isLerping = false;
+                if (characterController.isGrounded) {
+                    audioSource.PlayOneShot(footstepSounds[Random.Range(0, footstepSounds.Length)]);
+                }
             }
         }
     }

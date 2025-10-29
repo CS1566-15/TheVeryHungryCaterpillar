@@ -1,3 +1,4 @@
+using NUnit.Framework.Constraints;
 using UnityEngine;
 
 public class CaterpillarControl : MonoBehaviour
@@ -15,13 +16,14 @@ public class CaterpillarControl : MonoBehaviour
     private float yVelocity;
     private bool hasLanded;
     private float jumpDistance;
+    private float lastMagnitude;
     private Vector3 jumpDirection;
+    private float timeElapsedSinceLanding;
     // Eating (growing size)
     private bool isCurrentlyGrowing;
     private float timeSpentGrowing;
     private float targetCameraSizeAfterGrowth;
     private float sizeIncreaseAfterEating;
-    private Vector3 targetSize;
     // Segment Interval (see comments on 'ProcessSegmentsOnInterval')
     private string intervalType;
     private float interval;
@@ -43,6 +45,10 @@ public class CaterpillarControl : MonoBehaviour
     [SerializeField] private float verticalJumpSpeed;
     [SerializeField] private float horizontalJumpSpeedMultiplier;
     [SerializeField] private JumpPathGenerator jumpPathGenerator;
+    [SerializeField] private float timeToMoveAfterLanding;
+    [Header("Sounds")]
+    [SerializeField] private AudioClip jumpStart;
+    [SerializeField] private AudioClip jumpClick;
     [Header("References")]
     [SerializeField] private CharacterController characterController;
     [SerializeField] private Transform moveTarget;
@@ -80,6 +86,11 @@ public class CaterpillarControl : MonoBehaviour
                     vec = vec.normalized * 10f;
                     moveTarget.position = characterController.transform.position + vec;
                 }
+                if (Mathf.Abs(vec.magnitude - lastMagnitude) >= 1f) {
+                    lastMagnitude = vec.magnitude;
+                    audioSource.pitch = vec.magnitude / 10f;
+                    audioSource.PlayOneShot(jumpClick);
+                }
             }
         }
     }
@@ -96,7 +107,7 @@ public class CaterpillarControl : MonoBehaviour
         if (isMoving) {
             Vector3 movementDirection = (moveTarget.position - characterController.transform.position).normalized;
             characterController.Move(movementDirection * speed * Time.deltaTime);
-            characterController.transform.forward = -movementDirection;
+            characterController.transform.forward = new Vector3(-movementDirection.x, 0, -movementDirection.z);
         }
     }
 
@@ -105,22 +116,26 @@ public class CaterpillarControl : MonoBehaviour
         if (Input.GetMouseButtonDown(1)) {
             if (!characterController.isGrounded) return;
             jumpPathGenerator.ShowPath();
+            audioSource.PlayOneShot(jumpStart);
             moveTarget.GetComponent<Animation>().Play("MoveTargetShow");
             isWaitingToJump = true;
             canMove = false;
         }
         // Start the jump when user releases RMB.
-        // There's A LOT of stuff to do when the player jumps...don't worry about it.
+        // There's A LOT of stuff to do when the player jumps.
+        // I call it "The dumping ground"
         else if (Input.GetMouseButtonUp(1)) {
             if (!isWaitingToJump) return;
             jumpPathGenerator.HidePath();
             isWaitingToJump = false;
             moveTarget.GetComponent<Animation>().Play("MoveTargetHide");
+            audioSource.pitch = 1f;
             float extraVelocity = moveTarget.position.y - transform.position.y;
             yVelocity = verticalJumpSpeed + extraVelocity;
             moveTargetIsActive = false;
             jumpDistance = Vector3.Distance(characterController.transform.position, moveTarget.position);
             jumpDirection = -caterpillarFront.forward;
+            gravity = -40f;
             for (int i = 1; i < bodySegments.Length; i++) {
                 bodySegments[i].GetComponent<Rigidbody>().useGravity = false;
             }
@@ -149,18 +164,25 @@ public class CaterpillarControl : MonoBehaviour
                 for (int i = 1; i < bodySegments.Length; i++) {
                     bodySegments[i].GetComponent<Rigidbody>().useGravity = true;
                 }
-                canMove = true;
-                moveTargetIsActive = true;
-                hasLanded = true;
+                gravity = -2f;
+                SegmentIntervalLand();
+                characterController.Move(jumpDirection * speed * Time.deltaTime);
+                timeElapsedSinceLanding += Time.deltaTime;
+                if (timeElapsedSinceLanding >= timeToMoveAfterLanding) {
+                    timeElapsedSinceLanding = 0;
+                    canMove = true;
+                    moveTargetIsActive = true;
+                    hasLanded = true;
+                }
             }
         }
     }
 
     public void StartToGrowCaterpillarSize(float sizeIncreaseAfterEating) {
         this.sizeIncreaseAfterEating = sizeIncreaseAfterEating;
-        targetSize = transform.localScale * sizeIncreaseAfterEating;
         targetCameraSizeAfterGrowth = Camera.main.orthographicSize * sizeIncreaseAfterEating;
         audioSource.PlayOneShot(sizeGrowthSound);
+        SegmentIntervalSwallow();
         isCurrentlyGrowing = true;
     }
 
@@ -168,9 +190,9 @@ public class CaterpillarControl : MonoBehaviour
         if (!isCurrentlyGrowing) return;
         // Smoothing lerp between old caterpillar size and camera size.
         timeSpentGrowing += Time.deltaTime;
-        transform.localScale = Vector3.Lerp(transform.localScale, targetSize, timeSpentGrowing);
         Camera.main.orthographicSize = Mathf.Lerp(Camera.main.orthographicSize, targetCameraSizeAfterGrowth, timeSpentGrowing);
         if (timeSpentGrowing >= 1f) {
+            //SegmentIntervalSizeGrowth();
             speed *= sizeIncreaseAfterEating;
             extraTurnSpeed *= sizeIncreaseAfterEating;
             timeSpentGrowing = 0f;
@@ -193,9 +215,21 @@ public class CaterpillarControl : MonoBehaviour
         segmentIntervalEnabled = true;
     }
 
+    private void SegmentIntervalSwallow() {
+        intervalType = "swallow";
+        interval = 0.05f;
+        segmentIntervalEnabled = true;
+    }
+
     private void SegmentIntervalSizeGrowth() {
         intervalType = "size growth";
-        interval = 0.5f;
+        interval = 0.0f;
+        segmentIntervalEnabled = true;
+    }
+
+    private void SegmentIntervalLand() {
+        intervalType = "land";
+        interval = 0.0f;
         segmentIntervalEnabled = true;
     }
 
@@ -210,9 +244,6 @@ public class CaterpillarControl : MonoBehaviour
         // ------------------------------------------------------------------
         // If the operation happnes EVERY FRAME during interval, put it here.
         // ------------------------------------------------------------------
-        if (intervalType == "sizeGrowth") {
-
-        }
 
         if (Time.time >= nextIntervalTime) {
             // -------------------------------------------
@@ -222,6 +253,12 @@ public class CaterpillarControl : MonoBehaviour
                 if (currentSegment != 0) {
                     bodySegments[currentSegment].GetComponent<Rigidbody>().useGravity = true;
                 }
+            }
+            if (intervalType == "swallow") {
+                bodySegments[currentSegment].GetComponent<BodySegment>().Swallow(sizeIncreaseAfterEating);
+            }
+            if (intervalType == "land") {
+                bodySegments[currentSegment].GetComponent<BodySegment>().Land();
             }
             // Process moving on to the next segment.
             currentSegment += 1;
