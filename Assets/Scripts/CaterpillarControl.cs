@@ -19,6 +19,7 @@ public class CaterpillarControl : MonoBehaviour
     private float lastMagnitude;
     private Vector3 jumpDirection;
     private float timeElapsedSinceLanding;
+    private int numberOfJumpsRemaining;
     // Eating (growing size)
     private bool isCurrentlyGrowing;
     private float timeSpentGrowing;
@@ -136,6 +137,7 @@ public class CaterpillarControl : MonoBehaviour
             jumpDistance = Vector3.Distance(characterController.transform.position, moveTarget.position);
             jumpDirection = -caterpillarFront.forward;
             gravity = -40f;
+            Physics.gravity = new Vector3(0f, -40f, 0f);
             for (int i = 1; i < bodySegments.Length; i++) {
                 bodySegments[i].GetComponent<Rigidbody>().useGravity = false;
             }
@@ -169,6 +171,7 @@ public class CaterpillarControl : MonoBehaviour
                 characterController.Move(jumpDirection * speed * Time.deltaTime);
                 timeElapsedSinceLanding += Time.deltaTime;
                 if (timeElapsedSinceLanding >= timeToMoveAfterLanding) {
+                    Physics.gravity = new Vector3(0f, -2f, 0f);
                     timeElapsedSinceLanding = 0;
                     canMove = true;
                     moveTargetIsActive = true;
@@ -269,6 +272,10 @@ public class CaterpillarControl : MonoBehaviour
             }
             nextIntervalTime = Time.time + interval;
         }
+    }
+
+    public void IncreaseNumberOfJumps() {
+        numberOfJumpsRemaining += 1;
     }
 
     public bool GetIsWaitingToJump() {

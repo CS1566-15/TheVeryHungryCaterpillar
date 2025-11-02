@@ -1,0 +1,20 @@
+--------------------------------------------------------------------------
+The caterpillar will have an ability to pick up fruits and eat them later.
+There will be a small circular meter display time until effect ends.
+--------------------------------------------------------------------------
+1. STRAWBERRY: Add an extra jump
+	-> No. of times the player can jump is limited.
+2. ORANGE: Increase jump distance for a limited time
+	-> Platforms that can only be reached with a long jump.
+3. BLUEBERRY: Increase move speed for limited time
+	-> Hot areas of ground (pavement) can tread for limited time.
+4. CHOCOLATE: Point the player toward nearby foods
+	-> Food can be hard to locate
+5. GRAPE: Double growth rate for a limited time
+	-> Maximize growth when lots of food nearby
+6. CAKE: Allow the player to jump and smash through walls 1 time.
+	-> There are walls in the level that must be smashed through
+7. POISON FRUIT: Shrinks the player's size.
+	-> Acts as a level hazard
+8. SEED: No effect, basic, introductory food
+	-> Grow the caterpillar's size
