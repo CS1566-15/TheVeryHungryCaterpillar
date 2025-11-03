@@ -9,7 +9,6 @@ public class Mouth : MonoBehaviour
     private Food foodBeingEaten;
     [SerializeField] private float timeToEat;
     [SerializeField] private CaterpillarControl caterpillarControl;
-    [SerializeField] private Animator animator;
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip startEatingSound;
     private void Awake() {
@@ -31,7 +30,6 @@ public class Mouth : MonoBehaviour
             // Once food is done entering the mouth, destroy it and start growing caterpillar size.
             if (eatingProgress >= 1f) {
                 Destroy(foodBeingEaten.gameObject);
-                animator.Play("Eat");
                 float percentageFactor = 1f + foodBeingEaten.GetPercentSizeIncrease() / 100f;
                 caterpillarControl.StartToGrowCaterpillarSize(percentageFactor);
                 eatingProgress = 0f;

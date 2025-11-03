@@ -18,7 +18,7 @@ public class CameraFollow : MonoBehaviour
     private void Update() {
         Vector3 average = Vector3.zero;
         if (caterpillarControl.GetIsWaitingToJump()) {
-            average = Vector3.Lerp(caterpillarFront.position, moveTarget.position, 0.75f);
+            average = Vector3.Lerp(caterpillarFront.position, moveTarget.position, 0.5f);
         }
         else {
             average = Vector3.Lerp(caterpillarBack.position, caterpillarFront.position, 0.5f);

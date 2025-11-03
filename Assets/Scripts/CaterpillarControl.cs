@@ -1,25 +1,36 @@
+using NUnit.Framework.Constraints;
 using UnityEngine;
-using UnityEngine.Audio;
 
 public class CaterpillarControl : MonoBehaviour
 {
     // References
-    private CharacterController characterController;
     private AudioSource audioSource;
     // Movement
     private bool canMove;
     private bool isMoving;
+    private bool moveTargetIsActive;
     private float timeElapsedSinceMoveBegan;
     private float extraTurnSpeedFactor;
     // Gravity and Jumping
     private bool isWaitingToJump;
     private float yVelocity;
+    private bool hasLanded;
+    private float jumpDistance;
+    private float lastMagnitude;
+    private Vector3 jumpDirection;
+    private float timeElapsedSinceLanding;
+    private int numberOfJumpsRemaining;
     // Eating (growing size)
     private bool isCurrentlyGrowing;
     private float timeSpentGrowing;
     private float targetCameraSizeAfterGrowth;
     private float sizeIncreaseAfterEating;
-    private Vector3 targetSize;
+    // Segment Interval (see comments on 'ProcessSegmentsOnInterval')
+    private string intervalType;
+    private float interval;
+    private bool segmentIntervalEnabled;
+    private int currentSegment;
+    private float nextIntervalTime;
 
     [Header("Movement")]
     [SerializeField] private float speed;
@@ -29,105 +40,152 @@ public class CaterpillarControl : MonoBehaviour
     [SerializeField] private float delayAfterMoving;
     [SerializeField] private float rotationSmoothing;
     [SerializeField] private float moveTargetSmoothing;
+    [SerializeField] private Transform[] bodySegments;
     [Header("Gravity and Jumping")]
     [SerializeField] private float gravity;
     [SerializeField] private float verticalJumpSpeed;
-    [SerializeField] private float horizontalJumpSpeed;
+    [SerializeField] private float horizontalJumpSpeedMultiplier;
+    [SerializeField] private JumpPathGenerator jumpPathGenerator;
+    [SerializeField] private float timeToMoveAfterLanding;
+    [Header("Sounds")]
+    [SerializeField] private AudioClip jumpStart;
+    [SerializeField] private AudioClip jumpClick;
     [Header("References")]
-    [SerializeField] private Animator animator;
+    [SerializeField] private CharacterController characterController;
     [SerializeField] private Transform moveTarget;
     [SerializeField] private Transform caterpillarFront;
     [SerializeField] private AudioClip sizeGrowthSound;
 
-    private float highestExtraTurnSpeedFactor = 0;
     private void Awake() {
         canMove = true;
-        characterController = GetComponent<CharacterController>();
         audioSource = GetComponent<AudioSource>();
     }
+
     private void Update() {
-        Debug.Log(caterpillarFront.localEulerAngles.x);
+        ProcessMoveTarget();
         ProcessMovement();
         ProcessGravityAndJumping();
         ProcessGrowingSize();
+        ProcessLimitingMaxYVelocityForSegments();
+        ProcessSegmentsOnInterval();
     }
-    private void ProcessMovement() {
-        if (!canMove) return;
+
+    private void ProcessMoveTarget() {
+        if (!moveTargetIsActive) return;
+        // The caterpillar always moves toward the moveTarget. This is used for moving and jumping.
         // Use the cursor position to fire a raycast, which hits the ground. This is the point the caterpillar moves toward.
-        if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit)) {
-            // Smooth out the moveTarget's position so the caterpillar looks less robotic when aiming toward the moveTarget.
-            moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing);
+        if (!isWaitingToJump) {
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit, Mathf.Infinity, 1 << 8)) {
+                moveTarget.position = Vector3.Lerp(moveTarget.position, new Vector3(hit.point.x, transform.position.y, hit.point.z), Time.deltaTime * moveTargetSmoothing);
+            }
         }
-        // Start moving by clicking mouse button
-        if (Input.GetMouseButtonDown(0)) {
-            isMoving = true;
-        }
-        if (isMoving) {
-            // This 'if, else' block adds speed when the caterpillar is turning...for some reason, the movement doesn't look right otherwise.
-            // Kind of a bandaid solution, but it works.
-
-            if (caterpillarFront.localEulerAngles.x > 300) {
-                extraTurnSpeedFactor = Mathf.Abs(extraTurnSpeed * (360 % caterpillarFront.localEulerAngles.x / 15f));
-            }
-            else {
-                extraTurnSpeedFactor = Mathf.Abs(extraTurnSpeed * (caterpillarFront.localEulerAngles.x / 15f));
-            }
-
-            //extraTurnSpeedFactor = extraTurnSpeed * (caterpillarFront.localEulerAngles.x);
-            //if (extraTurnSpeedFactor > highestExtraTurnSpeedFactor) {
-            //    highestExtraTurnSpeedFactor -= extraTurnSpeedFactor;
-            //}
-
-            // A singular Caterpillar movement is split into 2 parts:
-            // 1. actually moving
-            // 2. delay after moving, so the animation can catch up
-            animator.Play("Crawl");
-            // This keeps track of time, so we know when to stop moving.
-            timeElapsedSinceMoveBegan += Time.deltaTime;
-            // This block only executes while the caterpillar is allowed to move.
-            if (timeElapsedSinceMoveBegan < timeSpentMoving) {
-                // Moves the caterpillar in the direction the caterpillarFront is facing (its head) and rotates the entire body.
-                characterController.Move(caterpillarFront.up * (speed + extraTurnSpeedFactor) * speedCurve.Evaluate(timeElapsedSinceMoveBegan) * Time.deltaTime);
-                transform.forward = -Vector3.Lerp(-transform.forward, caterpillarFront.up, Time.deltaTime * rotationSmoothing);
-                transform.localEulerAngles = new Vector3(0, transform.localEulerAngles.y, transform.localEulerAngles.z);
-            }
-            // This checks if 1. and 2. have completed (total time elapsed is greater than the delay + time spent moving).
-            // If so, that means we've completed a single movement, and we set isMoving to false.
-            if (timeElapsedSinceMoveBegan >= delayAfterMoving + timeSpentMoving) {
-                timeElapsedSinceMoveBegan = 0f;
-                if (!Input.GetMouseButton(0)) {
-                    isMoving = false;
+        else {
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit)) {
+                moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing * 10);
+                Vector3 vec = moveTarget.position - characterController.transform.position;
+                if (vec.magnitude >= 10f) {
+                    vec = vec.normalized * 10f;
+                    moveTarget.position = characterController.transform.position + vec;
+                }
+                if (Mathf.Abs(vec.magnitude - lastMagnitude) >= 1f) {
+                    lastMagnitude = vec.magnitude;
+                    audioSource.pitch = vec.magnitude / 10f;
+                    audioSource.PlayOneShot(jumpClick);
                 }
             }
         }
     }
-    private void ProcessGravityAndJumping() {
-        if (Input.GetMouseButtonDown(1)) {
-            isWaitingToJump = true;
+
+    private void ProcessMovement() {
+        if (!canMove) return;
+        // Start moving by clicking mouse button
+        if (Input.GetMouseButtonDown(0)) {
+            isMoving = true;
         }
+        else if (Input.GetMouseButtonUp(0)) {
+            isMoving = false;
+        }
+        if (isMoving) {
+            Vector3 movementDirection = (moveTarget.position - characterController.transform.position).normalized;
+            characterController.Move(movementDirection * speed * Time.deltaTime);
+            characterController.transform.forward = new Vector3(-movementDirection.x, 0, -movementDirection.z);
+        }
+    }
+
+    private void ProcessGravityAndJumping() {
+        // Get ready to jump when user presses RMB.
+        if (Input.GetMouseButtonDown(1)) {
+            if (!characterController.isGrounded) return;
+            jumpPathGenerator.ShowPath();
+            audioSource.PlayOneShot(jumpStart);
+            moveTarget.GetComponent<Animation>().Play("MoveTargetShow");
+            isWaitingToJump = true;
+            canMove = false;
+        }
+        // Start the jump when user releases RMB.
+        // There's A LOT of stuff to do when the player jumps.
+        // I call it "The dumping ground"
         else if (Input.GetMouseButtonUp(1)) {
+            if (!isWaitingToJump) return;
+            jumpPathGenerator.HidePath();
             isWaitingToJump = false;
-            yVelocity = verticalJumpSpeed;
+            moveTarget.GetComponent<Animation>().Play("MoveTargetHide");
+            audioSource.pitch = 1f;
+            float extraVelocity = moveTarget.position.y - transform.position.y;
+            yVelocity = verticalJumpSpeed + extraVelocity;
+            moveTargetIsActive = false;
+            jumpDistance = Vector3.Distance(characterController.transform.position, moveTarget.position);
+            jumpDirection = -caterpillarFront.forward;
+            gravity = -40f;
+            Physics.gravity = new Vector3(0f, -40f, 0f);
+            for (int i = 1; i < bodySegments.Length; i++) {
+                bodySegments[i].GetComponent<Rigidbody>().useGravity = false;
+            }
         }
         // Runs while RMB is held down. Rotate the caterpillar toward the moveTarget.
         if (isWaitingToJump) {
             // Makes a flat vector on the plane Y=0 from caterpillar to moveTarget.
-            Vector3 lookDirection = new Vector3(moveTarget.position.x - transform.position.x, 
-                                                0,
-                                                moveTarget.position.z - transform.position.z);
-            transform.forward = -lookDirection;
-        }
-        if (!characterController.isGrounded) {
-            yVelocity += gravity * Time.deltaTime;
-            characterController.Move(caterpillarFront.up * horizontalJumpSpeed * Time.deltaTime);
+            Vector3 lookDirection = new Vector3(moveTarget.position.x - characterController.transform.position.x, 0, moveTarget.position.z - characterController.transform.position.z);
+            characterController.transform.forward = -lookDirection;
         }
         characterController.Move(Vector3.up * yVelocity * Time.deltaTime);
+        // Add gravity and move the caterpillar through the air.
+        if (!characterController.isGrounded) {
+            if (hasLanded) {
+                hasLanded = false;
+            }
+            yVelocity += gravity * Time.deltaTime;
+            characterController.Move(jumpDirection * horizontalJumpSpeedMultiplier * jumpDistance * Time.deltaTime);
+            //transform.GetChild(0).forward = Vector3.Lerp(transform.GetChild(0).forward, new Vector3(-characterController.velocity.x, -yVelocity * 0.5f, -characterController.velocity.z), Time.deltaTime * 30f);
+        }
+        // Check when we've landed...play sound and animation.
+        else {
+            //transform.GetChild(0).localRotation = Quaternion.Lerp(transform.GetChild(0).localRotation, Quaternion.identity, Time.deltaTime * 80f);
+            // Again, there's A LOT of stuff to do when we detect that the player has landed.
+            if (!hasLanded) {
+                for (int i = 1; i < bodySegments.Length; i++) {
+                    bodySegments[i].GetComponent<Rigidbody>().useGravity = true;
+                }
+                gravity = -2f;
+                SegmentIntervalLand();
+                characterController.Move(jumpDirection * speed * Time.deltaTime);
+                timeElapsedSinceLanding += Time.deltaTime;
+                if (timeElapsedSinceLanding >= timeToMoveAfterLanding) {
+                    Physics.gravity = new Vector3(0f, -2f, 0f);
+                    timeElapsedSinceLanding = 0;
+                    canMove = true;
+                    moveTargetIsActive = true;
+                    hasLanded = true;
+                }
+            }
+        }
     }
+
     public void StartToGrowCaterpillarSize(float sizeIncreaseAfterEating) {
         this.sizeIncreaseAfterEating = sizeIncreaseAfterEating;
-        targetSize = transform.localScale * sizeIncreaseAfterEating;
         targetCameraSizeAfterGrowth = Camera.main.orthographicSize * sizeIncreaseAfterEating;
         audioSource.PlayOneShot(sizeGrowthSound);
+        SegmentIntervalSwallow();
         isCurrentlyGrowing = true;
     }
 
@@ -135,14 +193,89 @@ public class CaterpillarControl : MonoBehaviour
         if (!isCurrentlyGrowing) return;
         // Smoothing lerp between old caterpillar size and camera size.
         timeSpentGrowing += Time.deltaTime;
-        transform.localScale = Vector3.Lerp(transform.localScale, targetSize, timeSpentGrowing);
         Camera.main.orthographicSize = Mathf.Lerp(Camera.main.orthographicSize, targetCameraSizeAfterGrowth, timeSpentGrowing);
         if (timeSpentGrowing >= 1f) {
+            //SegmentIntervalSizeGrowth();
             speed *= sizeIncreaseAfterEating;
             extraTurnSpeed *= sizeIncreaseAfterEating;
             timeSpentGrowing = 0f;
             isCurrentlyGrowing = false;
         }
+    }
+
+    private void ProcessLimitingMaxYVelocityForSegments() {
+        for (int i = 1; i < bodySegments.Length; i++) {
+            Vector3 vel = bodySegments[i].GetComponent<Rigidbody>().linearVelocity;
+            if (vel.y < -10f) {
+                bodySegments[i].GetComponent<Rigidbody>().linearVelocity = new Vector3(vel.x, -10f, vel.y);
+            }
+        }
+    }
+
+    private void SegmentIntervalRigidbodyActivation() {
+        intervalType = "rigidbody";
+        interval = 0.05f;
+        segmentIntervalEnabled = true;
+    }
+
+    private void SegmentIntervalSwallow() {
+        intervalType = "swallow";
+        interval = 0.05f;
+        segmentIntervalEnabled = true;
+    }
+
+    private void SegmentIntervalSizeGrowth() {
+        intervalType = "size growth";
+        interval = 0.0f;
+        segmentIntervalEnabled = true;
+    }
+
+    private void SegmentIntervalLand() {
+        intervalType = "land";
+        interval = 0.0f;
+        segmentIntervalEnabled = true;
+    }
+
+    // This allows us to apply an effect to each body segment gradually, over time.
+    // Because it looks nicer to go segment-by-segment rather than
+    // applying the effect to every segment at the same time.
+    // Currently it supports...
+    // - Rigidbody activation, which happens when the caterpillar lands after a jump.
+    // - Size growth, which happens when caterpillar eats food.
+    private void ProcessSegmentsOnInterval() {
+        if (!segmentIntervalEnabled) return;
+        // ------------------------------------------------------------------
+        // If the operation happnes EVERY FRAME during interval, put it here.
+        // ------------------------------------------------------------------
+
+        if (Time.time >= nextIntervalTime) {
+            // -------------------------------------------
+            // If the operation happnes ONCE, put it here.
+            // -------------------------------------------
+            if (intervalType == "rigidbody") {
+                if (currentSegment != 0) {
+                    bodySegments[currentSegment].GetComponent<Rigidbody>().useGravity = true;
+                }
+            }
+            if (intervalType == "swallow") {
+                bodySegments[currentSegment].GetComponent<BodySegment>().Swallow(sizeIncreaseAfterEating);
+            }
+            if (intervalType == "land") {
+                bodySegments[currentSegment].GetComponent<BodySegment>().Land();
+            }
+            // Process moving on to the next segment.
+            currentSegment += 1;
+            if (currentSegment >= bodySegments.Length) {
+                currentSegment = 0;
+                segmentIntervalEnabled = false;
+                return;
+            }
+            nextIntervalTime = Time.time + interval;
+        }
+    }
+
+    public void IncreaseNumberOfJumps() {
+        numberOfJumpsRemaining += 1;
     }
 
     public bool GetIsWaitingToJump() {
