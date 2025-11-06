@@ -13,8 +13,11 @@ MonoBehaviour:
   m_Name: SlugDialogue
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
   dialogueLines:
-  - 'well met, traveller
-
-    wish to ring the bell, do you?
-
-    me me me me meme'
+  - Oh, hello there little Mr. Pillar!
+  - You look quite hungry. You should eat something!
+  - The seeds around here are quite nutritious, you know. Theres one just to your
+    right.
+  - But be careful - not everything is safe to eat.
+  - Some things will make you feel funny...
+  - Keep eating and growing, and one day you'll spread your wings!
+  - Good luck on your journey, little caterpillar.
