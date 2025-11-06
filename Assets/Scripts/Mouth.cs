@@ -17,6 +17,9 @@ public class Mouth : MonoBehaviour
     private void OnTriggerEnter(Collider other) {
         if (other.tag == "Food") {
             foodBeingEaten = other.GetComponent<Food>();
+            if (foodBeingEaten.GetThresholdSize() > caterpillarControl.GetCurrentSize()) return;
+            if (foodBeingEaten.GetHasBeenEaten()) return;
+            foodBeingEaten.SetHasBeenEaten(true);
             foodBeingEaten.UseAbility();
             audioSource.PlayOneShot(startEatingSound);
             isEating = true;

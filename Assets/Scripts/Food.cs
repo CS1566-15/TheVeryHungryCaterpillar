@@ -5,6 +5,7 @@ using UnityEngine.UI;
 public class Food : MonoBehaviour
 {
     [SerializeField] private float percentSizeIncrease;
+    [SerializeField] private float thresholdSize;
     [SerializeField] private Type foodType;
     private CaterpillarControl caterpillarControl;
     private Image timedFruitMeterGraphic;
@@ -13,6 +14,7 @@ public class Food : MonoBehaviour
     private bool timedEffect = false;
     private float effectDuration = 0f;
     private float elapsedTime = 0f;
+    private bool hasBeenEaten = false;
     private enum Type {
         Strawberry,
         Orange,
@@ -106,7 +108,20 @@ public class Food : MonoBehaviour
         }
     }
 
-    public float GetPercentSizeIncrease() {
+    public float GetPercentSizeIncrease()
+    {
         return percentSizeIncrease;
+    }
+    public void SetHasBeenEaten(bool state)
+    {
+        hasBeenEaten = state;
+    }
+    public bool GetHasBeenEaten()
+    {
+        return hasBeenEaten;
+    }
+    public float GetThresholdSize()
+    {
+        return thresholdSize;
     }
 }

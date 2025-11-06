@@ -28,6 +28,7 @@ public class CaterpillarControl : MonoBehaviour
     private float targetCameraSizeAfterGrowth;
     private float sizeIncreaseAfterEating;
     private float growthMultiplier = 1f;
+    private float currentSize = 1f;
     // Segment Interval (see comments on 'ProcessSegmentsOnInterval')
     private string intervalType;
     private float interval;
@@ -61,6 +62,7 @@ public class CaterpillarControl : MonoBehaviour
     [SerializeField] private Transform jumpCounterParent;
 
     private void Awake() {
+        yVelocity = -20f;
         canMove = true;
         audioSource = GetComponent<AudioSource>();
     }
@@ -192,6 +194,7 @@ public class CaterpillarControl : MonoBehaviour
     }
 
     public void StartToGrowCaterpillarSize(float sizeIncreaseAfterEating) {
+        currentSize += sizeIncreaseAfterEating;
         this.sizeIncreaseAfterEating = sizeIncreaseAfterEating * growthMultiplier;
         targetCameraSizeAfterGrowth = Camera.main.orthographicSize * sizeIncreaseAfterEating;
         audioSource.PlayOneShot(sizeGrowthSound);
@@ -318,7 +321,13 @@ public class CaterpillarControl : MonoBehaviour
         }
     }
 
-    public bool GetIsWaitingToJump() {
+    public bool GetIsWaitingToJump()
+    {
         return isWaitingToJump;
+    }
+    
+    public float GetCurrentSize()
+    {
+        return currentSize;
     }
 }

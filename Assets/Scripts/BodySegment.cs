@@ -24,7 +24,7 @@ public class BodySegment : MonoBehaviour
     }
     private void Swallowing() {
         if (!isCurrentlySwallowing) return;
-        timeSpent += Time.deltaTime;
+        timeSpent += Time.deltaTime * 2f;
         transform.localScale = Vector3.Lerp(transform.localScale, targetSize + Vector3.one * swallowCurve.Evaluate(timeSpent) * 0.5f, timeSpent);
         if (timeSpent >= 1f) {
             timeSpent = 0f;
