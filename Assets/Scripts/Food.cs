@@ -39,10 +39,7 @@ public class Food : MonoBehaviour
                 caterpillarControl.IncreaseNumberOfJumps();
                 break;
             case Type.Orange:
-                timedEffect = true;
-                effectDuration = 7f;
-                timedFruitMeterText.SetText("Jump ↑");
-                caterpillarControl.SetHasIncreasedJumpDistance(true);
+                // TODO
                 break;
             case Type.Blueberry:
                 timedEffect = true;
@@ -55,20 +52,21 @@ public class Food : MonoBehaviour
                 break;
             case Type.Grape:
                 timedEffect = true;
+                effectDuration = 7f;
+                timedFruitMeterText.SetText("Jump ↑");
+                caterpillarControl.SetHasIncreasedJumpDistance(true);
+                break;
+            case Type.Cake:
+                timedEffect = true;
                 effectDuration = 10f;
                 timedFruitMeterText.SetText("Growth ↑");
                 caterpillarControl.SetGrowthMultiplier(true);
-                break;
-            case Type.Cake:
-                // TODO
                 break;
             case Type.PoisonFruit:
                 // Does nothing special, just punishes caterpillar by reducing size.
                 break;
             case Type.Seed:
                 // Also does nothing special, just grows caterpillar size.
-                break;
-            default:
                 break;
         }
     }
@@ -79,17 +77,14 @@ public class Food : MonoBehaviour
         elapsedTime = 0f;
 
         switch (foodType) {
-            case Type.Orange:
+            case Type.Grape:
                 caterpillarControl.SetHasIncreasedJumpDistance(false);
                 break;
             case Type.Blueberry:
                 caterpillarControl.SetSpeedMultiplier(false);
                 break;
-            case Type.Chocolate:
+            case Type.Cake:
                 caterpillarControl.SetGrowthMultiplier(false);
-                break;
-            case Type.Grape:
-
                 break;
         }
 

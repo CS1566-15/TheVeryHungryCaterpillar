@@ -314,7 +314,7 @@ public class CaterpillarControl : MonoBehaviour
 
     public void SetGrowthMultiplier(bool hasGrowthMultiplier) {
         if (hasGrowthMultiplier) {
-            growthMultiplier = 2f;
+            growthMultiplier = 1.2f;
         }
         else {
             growthMultiplier = 1f;
