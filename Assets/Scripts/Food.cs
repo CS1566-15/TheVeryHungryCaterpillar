@@ -26,7 +26,7 @@ public class Food : MonoBehaviour
         Seed
     }
     private void Awake() {
-        caterpillarControl = GameObject.FindGameObjectWithTag("Player").GetComponent<CaterpillarControl>();
+        caterpillarControl = GameObject.FindGameObjectWithTag("PlayerController").GetComponent<CaterpillarControl>();
         timedFruitMeterGraphic = GameObject.FindGameObjectWithTag("TimedFruitMeter").GetComponent<Image>();
         timedFruitMeterAnimation = GameObject.FindGameObjectWithTag("TimedFruitMeter").GetComponent<Animation>();
         timedFruitMeterText = GameObject.FindGameObjectWithTag("TimedFruitMeter").transform.GetChild(0).GetComponent<TMP_Text>();
