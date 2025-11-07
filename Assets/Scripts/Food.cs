@@ -36,25 +36,23 @@ public class Food : MonoBehaviour
 
         switch (foodType) {
             case Type.Strawberry:
-                caterpillarControl.IncreaseNumberOfJumps();
-                break;
-            case Type.Orange:
-                // TODO
-                break;
-            case Type.Blueberry:
                 timedEffect = true;
                 effectDuration = 5f;
                 timedFruitMeterText.SetText("Speed ↑");
                 caterpillarControl.SetSpeedMultiplier(true);
                 break;
-            case Type.Chocolate:
-                // TODO
+            case Type.Orange:
                 break;
-            case Type.Grape:
+            case Type.Blueberry:
+                caterpillarControl.IncreaseNumberOfJumps();
+                break;
+            case Type.Chocolate:
                 timedEffect = true;
                 effectDuration = 7f;
                 timedFruitMeterText.SetText("Jump ↑");
                 caterpillarControl.SetHasIncreasedJumpDistance(true);
+                break;
+            case Type.Grape:
                 break;
             case Type.Cake:
                 timedEffect = true;
@@ -77,10 +75,10 @@ public class Food : MonoBehaviour
         elapsedTime = 0f;
 
         switch (foodType) {
-            case Type.Grape:
+            case Type.Chocolate:
                 caterpillarControl.SetHasIncreasedJumpDistance(false);
                 break;
-            case Type.Blueberry:
+            case Type.Strawberry:
                 caterpillarControl.SetSpeedMultiplier(false);
                 break;
             case Type.Cake:

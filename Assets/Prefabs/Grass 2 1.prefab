@@ -43,7 +43,7 @@ PrefabInstance:
     - target: {fileID: 786923638245300517, guid: f4c19ef941806654386154f5b25112b9, type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 4300000, guid: f89efc0f5c14c1f498a89cd575cd7b4b, type: 2}
+      objectReference: {fileID: -5495902117074765545, guid: 378baa27ec337974bbf6480f4a2c2c29, type: 3}
     - target: {fileID: 2114816942328018849, guid: f4c19ef941806654386154f5b25112b9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -88,6 +88,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Grass
       objectReference: {fileID: 0}
+    - target: {fileID: 7332087283353018607, guid: f4c19ef941806654386154f5b25112b9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: c661b9ee08ad2654e9937df5ced96ff2, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
