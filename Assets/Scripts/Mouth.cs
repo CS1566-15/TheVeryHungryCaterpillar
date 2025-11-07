@@ -17,6 +17,10 @@ public class Mouth : MonoBehaviour
     private void OnTriggerEnter(Collider other) {
         if (other.tag == "Food") {
             foodBeingEaten = other.GetComponent<Food>();
+            if (foodBeingEaten.GetThresholdSize() > caterpillarControl.GetCurrentSize()) return;
+            if (foodBeingEaten.GetHasBeenEaten()) return;
+            foodBeingEaten.SetHasBeenEaten(true);
+            foodBeingEaten.UseAbility();
             audioSource.PlayOneShot(startEatingSound);
             isEating = true;
         }
@@ -29,7 +33,6 @@ public class Mouth : MonoBehaviour
             foodBeingEaten.transform.localScale = Vector3.Lerp(foodBeingEaten.transform.localScale, Vector3.zero, eatingProgress);
             // Once food is done entering the mouth, destroy it and start growing caterpillar size.
             if (eatingProgress >= 1f) {
-                Destroy(foodBeingEaten.gameObject);
                 float percentageFactor = 1f + foodBeingEaten.GetPercentSizeIncrease() / 100f;
                 caterpillarControl.StartToGrowCaterpillarSize(percentageFactor);
                 eatingProgress = 0f;

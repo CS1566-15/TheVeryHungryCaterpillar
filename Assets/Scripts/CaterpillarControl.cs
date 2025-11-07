@@ -1,4 +1,5 @@
 using NUnit.Framework.Constraints;
+using TMPro;
 using UnityEngine;
 
 public class CaterpillarControl : MonoBehaviour
@@ -10,7 +11,7 @@ public class CaterpillarControl : MonoBehaviour
     private bool isMoving;
     private bool moveTargetIsActive;
     private float timeElapsedSinceMoveBegan;
-    private float extraTurnSpeedFactor;
+    private float speedMultiplier = 1f;
     // Gravity and Jumping
     private bool isWaitingToJump;
     private float yVelocity;
@@ -20,11 +21,14 @@ public class CaterpillarControl : MonoBehaviour
     private Vector3 jumpDirection;
     private float timeElapsedSinceLanding;
     private int numberOfJumpsRemaining;
+    private float increasedJumpDistance;
     // Eating (growing size)
     private bool isCurrentlyGrowing;
     private float timeSpentGrowing;
     private float targetCameraSizeAfterGrowth;
     private float sizeIncreaseAfterEating;
+    private float growthMultiplier = 1f;
+    private float currentSize = 1f;
     // Segment Interval (see comments on 'ProcessSegmentsOnInterval')
     private string intervalType;
     private float interval;
@@ -55,8 +59,10 @@ public class CaterpillarControl : MonoBehaviour
     [SerializeField] private Transform moveTarget;
     [SerializeField] private Transform caterpillarFront;
     [SerializeField] private AudioClip sizeGrowthSound;
+    [SerializeField] private Transform jumpCounterParent;
 
     private void Awake() {
+        yVelocity = -20f;
         canMove = true;
         audioSource = GetComponent<AudioSource>();
     }
@@ -83,8 +89,8 @@ public class CaterpillarControl : MonoBehaviour
             if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit)) {
                 moveTarget.position = Vector3.Lerp(moveTarget.position, hit.point, Time.deltaTime * moveTargetSmoothing * 10);
                 Vector3 vec = moveTarget.position - characterController.transform.position;
-                if (vec.magnitude >= 10f) {
-                    vec = vec.normalized * 10f;
+                if (vec.magnitude >= 10f + increasedJumpDistance) {
+                    vec = vec.normalized * (10f + increasedJumpDistance);
                     moveTarget.position = characterController.transform.position + vec;
                 }
                 if (Mathf.Abs(vec.magnitude - lastMagnitude) >= 1f) {
@@ -107,7 +113,7 @@ public class CaterpillarControl : MonoBehaviour
         }
         if (isMoving) {
             Vector3 movementDirection = (moveTarget.position - characterController.transform.position).normalized;
-            characterController.Move(movementDirection * speed * Time.deltaTime);
+            characterController.Move(movementDirection * speed * speedMultiplier * Time.deltaTime);
             characterController.transform.forward = new Vector3(-movementDirection.x, 0, -movementDirection.z);
         }
     }
@@ -116,6 +122,10 @@ public class CaterpillarControl : MonoBehaviour
         // Get ready to jump when user presses RMB.
         if (Input.GetMouseButtonDown(1)) {
             if (!characterController.isGrounded) return;
+            if (numberOfJumpsRemaining <= 0) {
+                jumpCounterParent.GetComponent<Animation>().Play("JumpCounterEmpty");
+                return;
+            }
             jumpPathGenerator.ShowPath();
             audioSource.PlayOneShot(jumpStart);
             moveTarget.GetComponent<Animation>().Play("MoveTargetShow");
@@ -124,7 +134,7 @@ public class CaterpillarControl : MonoBehaviour
         }
         // Start the jump when user releases RMB.
         // There's A LOT of stuff to do when the player jumps.
-        // I call it "The dumping ground"
+        // "The dumping ground"
         else if (Input.GetMouseButtonUp(1)) {
             if (!isWaitingToJump) return;
             jumpPathGenerator.HidePath();
@@ -141,6 +151,8 @@ public class CaterpillarControl : MonoBehaviour
             for (int i = 1; i < bodySegments.Length; i++) {
                 bodySegments[i].GetComponent<Rigidbody>().useGravity = false;
             }
+            numberOfJumpsRemaining -= 1;
+            jumpCounterParent.GetChild(0).GetComponent<TMP_Text>().SetText(numberOfJumpsRemaining.ToString());
         }
         // Runs while RMB is held down. Rotate the caterpillar toward the moveTarget.
         if (isWaitingToJump) {
@@ -182,7 +194,8 @@ public class CaterpillarControl : MonoBehaviour
     }
 
     public void StartToGrowCaterpillarSize(float sizeIncreaseAfterEating) {
-        this.sizeIncreaseAfterEating = sizeIncreaseAfterEating;
+        currentSize += sizeIncreaseAfterEating;
+        this.sizeIncreaseAfterEating = sizeIncreaseAfterEating * growthMultiplier;
         targetCameraSizeAfterGrowth = Camera.main.orthographicSize * sizeIncreaseAfterEating;
         audioSource.PlayOneShot(sizeGrowthSound);
         SegmentIntervalSwallow();
@@ -276,9 +289,45 @@ public class CaterpillarControl : MonoBehaviour
 
     public void IncreaseNumberOfJumps() {
         numberOfJumpsRemaining += 1;
+        // Actual text component is child of jumpCounterParent
+        jumpCounterParent.GetChild(0).GetComponent<TMP_Text>().SetText(numberOfJumpsRemaining.ToString());
+        jumpCounterParent.GetComponent<Animation>().Play("JumpCounterIncrease");
     }
 
-    public bool GetIsWaitingToJump() {
+    public void SetHasIncreasedJumpDistance(bool hasIncreasedJumpDistance) {
+        if (hasIncreasedJumpDistance) {
+            increasedJumpDistance = 5f;
+        }
+        else {
+            increasedJumpDistance = 0f;
+        }
+    }
+
+    public void SetSpeedMultiplier(bool hasSpeedMultiplier) {
+        if (hasSpeedMultiplier) {
+            speedMultiplier = 2f;
+        }
+        else {
+            speedMultiplier = 1f;
+        }
+    }
+
+    public void SetGrowthMultiplier(bool hasGrowthMultiplier) {
+        if (hasGrowthMultiplier) {
+            growthMultiplier = 2f;
+        }
+        else {
+            growthMultiplier = 1f;
+        }
+    }
+
+    public bool GetIsWaitingToJump()
+    {
         return isWaitingToJump;
+    }
+    
+    public float GetCurrentSize()
+    {
+        return currentSize;
     }
 }
